@@ -8,14 +8,17 @@ Task(
 		o.inDevice_("Scarlett 4i4 USB");
 		o.memSize_(2.pow(21));
 		s.latency_(0.5);
-		//s.options.numWireBufs_(128);
 
 		//wait
 		s.waitForBoot(
 			{
 
+				"näherinleid".postln;
+				"listening on port ".post;
+				NetAddr.langPort.postln;
+
 				//timer
-				~timer = LinkClock.new(128/60);
+				~timer = LinkClock.new(170/60);
 
 				//buffer & bus allocation
 				~bf = Buffer.alloc(Server.default,4096,2);
@@ -41,14 +44,19 @@ Task(
 						Buffer.readChannel(s, sf.fullPath, channels: [0,1]);
 					});
 				);
+				d.add(\ns ->
+					PathName(thisProcess.nowExecutingPath.dirname++"/samples/ns/").entries.collect({
+						arg sf;
+						Buffer.readChannel(s, sf.fullPath, channels: [0,1]);
+					});
+				);
 				s.sync;
 
 				//Create some LFOs for modulation
 				~panLFO=Array.fill(16,{});
 				~cutoffLFO=Array.fill(16,{});
 				~resLFO=Array.fill(16,{});
-				~indexLFO=Array.fill(16,{});
-				8.do({
+				15.do({
 					arg i;
 					~panLFO[i] = Ndef(
 						i.asSymbol,
@@ -68,12 +76,6 @@ Task(
 							LFTri.kr(1/(rrand(2,16))).range(0,2)
 						}
 					);
-					~indexLFO[i] = Ndef(
-						(i+24).asSymbol,
-						{
-							LFTri.kr(1/(rrand(2,16))).range(-3,3)
-						}
-					);
 				});
 
 				//Define synth sounds
@@ -89,48 +91,6 @@ Task(
 					arg j;
 					x.put(j+48,OneShot.new);
 					x[j+48].setParam('all',\bus,~fb.index)
-				});
-				4.do({
-					arg j;
-					8.do({
-						arg i;
-						if(
-							j < 2,
-							{
-								x[j].setParam((i+1).asSymbol,\attack,rrand(2.0,10.0));
-								x[j].setParam((i+1).asSymbol,\release,rrand(2.0,10.0));
-							},
-							{
-								x[j].setParam((i+1).asSymbol,\attack,rrand(0,1.0));
-								x[j].setParam((i+1).asSymbol,\release,rrand(0.5,2.0));
-							}
-						);
-						x[j].setParam((i+1).asSymbol,\modnum,rrand(1,4));
-						x[j].setParam((i+1).asSymbol,\modeno,rrand(1,4));
-						x[j].setParam((i+1).asSymbol,\cutoff_env,[0,1].choose);
-						x[j].setParam((i+1).asSymbol,\freq_slew,[0,0.1].choose);
-						x[j].setParam((i+1).asSymbol,\pan_slew,[0.1,20.0].choose);
-						x[j].setParam((i+1).asSymbol,\bus,b);
-						x[j].setParam((i+1).asSymbol,\pan,~panLFO[i]);
-						x[j].setParam((i+1).asSymbol,\cutoff,~cutoffLFO[i]);
-						x[j].setParam((i+1).asSymbol,\resonance,~resLFO[i]);
-						x[j].setParam((i+1).asSymbol,\index,~indexLFO[i]);
-						x[j+8].setParam((i+1).asSymbol,\attack,rrand(0,1.0));
-						x[j+8].setParam((i+1).asSymbol,\release,rrand(0.5,2.0));
-						x[j+8].setParam((i+1).asSymbol,\modnum,rrand(1,4));
-						x[j+8].setParam((i+1).asSymbol,\modeno,rrand(1,4));
-						x[j+8].setParam((i+1).asSymbol,\cutoff_env,[0,1].choose);
-						x[j+8].setParam((i+1).asSymbol,\freq_slew,[0,0.1].choose);
-						x[j+8].setParam((i+1).asSymbol,\pan_slew,[0.1,20.0].choose);
-						x[j+8].setParam((i+1).asSymbol,\bus,b);
-						x[j+4].setParam((i+1).asSymbol,\pan,~panLFO[i]);
-						x[j+8].setParam((i+1).asSymbol,\pan,~panLFO[i]);
-						x[j+12].setParam((i+1).asSymbol,\index,0.42);
-						x[j+12].setParam((i+1).asSymbol,\pan,~panLFO[i]);
-						x[j+8].setParam((i+1).asSymbol,\cutoff,~cutoffLFO[i]);
-						x[j+8].setParam((i+1).asSymbol,\resonance,~resLFO[i]);
-						x[j+8].setParam((i+1).asSymbol,\index,~indexLFO[i]);
-					});
 				});
 
 				//sampler
@@ -211,7 +171,7 @@ Task(
 								gain:\resonance.kr(1)),
 							pan
 						);
-						Out.ar(bus,sig)
+						Out.ar(bus,LeakDC.ar(sig))
 					}).play(s,[\out,~fb.index]);
 					s.sync;
 					32.do(
@@ -221,7 +181,7 @@ Task(
 								i % 2 == 0,
 								{
 									x.put(16+i,Synth(\PlayBufPlayer,[\bufnum,d[\n][~pbp_seqs.next]]));
-									x[16+i].set(\cutoff,15000,\resonance,0,\pan,-1,\start,0,\end,1,\loops,1,\amp,1,\bus,~fb.index)
+									//x[16+i].set(\cutoff,15000,\resonance,0,\pan,-1,\start,0,\end,1,\loops,1,\amp,1,\bus,~fb.index)
 								}
 							)
 						}
@@ -345,8 +305,16 @@ Task(
 				});
 
 				//up to 8-voice polyphony for synths, round-robin style
-				~voices = [\1,\2,\3,\4,\5,\6,\7,\8];
-				~voiceManager = Array.fill(32,{PatternProxy(Pseq(~voices, inf)).asStream});
+				~voices = Array.fill(8,{});
+				~voices.put(0,[\1]);
+				~voices.put(1,[\1,\2]);
+				~voices.put(2,[\1,\2,\3]);
+				~voices.put(3,[\1,\2,\3,\4]);
+				~voices.put(4,[\1,\2,\3,\4,\5]);
+				~voices.put(5,[\1,\2,\3,\4,\5,\6]);
+				~voices.put(6,[\1,\2,\3,\4,\5,\6,\7]);
+				~voices.put(7,[\1,\2,\3,\4,\5,\6,\7,\8]);
+				~voiceManager = Array.fill(32,{arg i; PatternProxy(Pseq(~voices[7], inf)).asStream});
 
 				//fx
 				SynthDef(
@@ -414,7 +382,7 @@ Task(
 						\inBus, b,
 						\revBus, c,
 						\outBus, ~fb.index,
-						\delay_time, ~timer.beatDur*4
+						\delay_time, ~timer.beatDur*8
 					],
 					~fxGrp
 				);
@@ -440,7 +408,7 @@ Task(
 				.alwaysOnTop_(true)
 				.alpha_(0.5)
 				.onClose_({~topScope.stop; ~bf.free; ~fb.free});
-				~color_vals = Array.fill(3,{Array.fill(3,{rrand(0,255)})});
+				~color_vals = Array.fill(3,{Array.fill(3,{255})});
 				~topScope = ScopeView(w,
 					Rect(0,
 						0,
@@ -534,7 +502,6 @@ Task(
 						arg msg;
 						var voice;
 						voice = ~voiceManager[msg[1]-1].next;
-						[msg].postln;
 						x[msg[1]-1].trigger(voice,msg[2].midicps);
 					},
 					\synth_osc
@@ -543,7 +510,6 @@ Task(
 					\samp_receiver,
 					{
 						arg msg;
-						[msg].postln;
 						if(
 							msg[1] % 2 == 0,
 							{
@@ -563,9 +529,17 @@ Task(
 					{
 						arg msg;
 						var voice;
+						~voiceManager[msg[1]-32] = PatternProxy(Pseq(~voices[0], inf)).asStream;
 						voice = ~voiceManager[msg[1]-32].next;
-						[msg].postln;
-						x[msg[1]].trigger(voice,d[\l][msg[2]-1]);
+						if(
+							msg[1] < 53,
+							{
+								x[msg[1]].trigger(voice,d[\l][msg[2]-1])
+							},
+							{
+								x[msg[1]].trigger(voice,d[\ns][msg[2]-1])
+							}
+						)
 					},
 					\drum_osc
 				);
@@ -599,57 +573,133 @@ Task(
 					\synth_params_receiver,
 					{
 						arg msg;
-						[msg].postln;
-						x[msg[1]-1].setParam('all',\amp,msg[3]);
-						/*if(
-							msg[2] == "attack",
+						if(
+							msg[2] == 'amp',
 							{
-								x[msg[1]-1].setParam('all',\attack,msg[3])
+								x[msg[1]-1].setParam('all',\amp,msg[3]);
 							}
 						);
 						if(
-							msg[2] == "release",
+							msg[2] == 'pan',
 							{
-								x[msg[1]-1].setParam('all',\release,msg[3])
+								x[msg[1]-1].setParam('all',\pan,msg[3]);
 							}
 						);
 						if(
-							msg[2] == "modnum",
+							msg[2] == 'attack',
 							{
-								x[msg[1]-1].setParam('all',\modnum,msg[3])
+								x[msg[1]-1].setParam('all',\attack,msg[3]);
 							}
 						);
 						if(
-							msg[2] == "modeno",
+							msg[2] == 'release',
 							{
-								x[msg[1]-1].setParam('all',\modeno,msg[3])
+								x[msg[1]-1].setParam('all',\release,msg[3]);
 							}
 						);
 						if(
-							msg[2] == "cutoff_env",
+							msg[2] == 'index-attack',
 							{
-								x[msg[1]-1].setParam('all',\cutoff_env,msg[3])
+								x[msg[1]-1].setParam('all',\iattack,msg[3]);
 							}
 						);
 						if(
-							msg[2] == "freq_slew",
+							msg[2] == 'index-release',
 							{
-								x[msg[1]-1].setParam('all',\freq_slew,msg[3])
+								x[msg[1]-1].setParam('all',\irelease,msg[3]);
 							}
 						);
 						if(
-							msg[2] == "pan_slew",
+							msg[2] == 'attack-curve',
 							{
-								x[msg[1]-1].setParam('all',\pan_slew,msg[3])
+								x[msg[1]-1].setParam('all',\cAtk,msg[3]);
 							}
 						);
 						if(
-							msg[2] == "bus",
+							msg[2] == 'release-curve',
+							{
+								x[msg[1]-1].setParam('all',\cRel,msg[3]);
+							}
+						);
+						if(
+							msg[2] == 'index-attack-curve',
+							{
+								x[msg[1]-1].setParam('all',\ciAtk,msg[3]);
+							}
+						);
+						if(
+							msg[2] == 'index-release-curve',
+							{
+								x[msg[1]-1].setParam('all',\ciRel,msg[3]);
+							}
+						);
+						if(
+							msg[2] == 'carrier-ratio',
+							{
+								x[msg[1]-1].setParam('all',\cRatio,msg[3]);
+							}
+						);
+						if(
+							msg[2] == 'modulator-ratio',
+							{
+								x[msg[1]-1].setParam('all',\mRatio,msg[3]);
+							}
+						);
+						if(
+							msg[2] == 'index',
+							{
+								x[msg[1]-1].setParam('all',\index,msg[3]);
+							}
+						);
+						if(
+							msg[2] == 'iScale',
+							{
+								x[msg[1]-1].setParam('all',\iScale,msg[3]);
+							}
+						);
+						if(
+							msg[2] == 'cutoff',
+							{
+								x[msg[1]-1].setParam('all',\cutoff,msg[3]);
+							}
+						);
+						if(
+							msg[2] == 'cutoff_env',
+							{
+								x[msg[1]-1].setParam('all',\cutoff_env,msg[3]);
+							}
+						);
+						if(
+							msg[2] == 'res',
+							{
+								x[msg[1]-1].setParam('all',\resonance,msg[3]);
+							}
+						);
+						if(
+							msg[2] == 'poly',
+							{
+								~voiceManager[msg[1]-1] = PatternProxy(Pseq(~voices[msg[3]-1], inf)).asStream;
+							}
+						);
+						if(
+							msg[2] == 'freq_slew',
+							{
+								x[msg[1]-1].setParam('all',\freq_slew,msg[3]);
+							}
+						);
+						if(
+							msg[2] == 'pan_slew',
+							{
+								x[msg[1]-1].setParam('all',\pan_slew,msg[3]);
+							}
+						);
+						if(
+							msg[2] == 'bus',
 							{
 								if(
 									msg[3] == 1,
 									{
-										x[msg[1]].setParam('all',\bus,b)
+										x[msg[1]].setParam('all',\bus,~fb.index)
 									}
 								);
 								if(
@@ -661,17 +711,11 @@ Task(
 								if(
 									msg[3] == 3,
 									{
-										x[msg[1]].setParam('all',\bus,~micBus)
-									}
-								);
-								if(
-									msg[3] == 4,
-									{
-										x[msg[1]].setParam('all',\bus,~fb.index)
+										x[msg[1]].setParam('all',\bus,b)
 									}
 								)
 							}
-						);*/
+						);
 					},
 					\synth_params
 				);
@@ -679,11 +723,50 @@ Task(
 					\samp_params_receiver,
 					{
 						arg msg;
-						[msg].postln;
 						if(
 							msg[1] % 2 == 0,
 							{
-								x[msg[1]].set(\amp,msg[3])
+								if(
+									msg[2] == 'amp',
+									{
+										x[msg[1]].set(\amp,msg[3])
+									}
+								);
+								if(
+									msg[2] == 'cutoff',
+									{
+										x[msg[1]].set(\cutoff,msg[3]);
+									}
+								);
+								if(
+									msg[2] == 'res',
+									{
+										x[msg[1]].set(\resonance,msg[3]);
+									}
+								);
+								if(
+									msg[2] == 'bus',
+									{
+										if(
+											msg[3] == 1,
+											{
+												x[msg[1]].set(\bus,~fb.index)
+											}
+										);
+										if(
+											msg[3] == 2,
+											{
+												x[msg[1]].set(\bus,c)
+											}
+										);
+										if(
+											msg[3] == 3,
+											{
+												x[msg[1]].set(\bus,b)
+											}
+										)
+									}
+								);
 							}
 						)
 					},
@@ -693,10 +776,69 @@ Task(
 					\drum_params_receiver,
 					{
 						arg msg;
-						[msg].postln;
-						x[msg[1]].setParam('all',\amp,msg[3])
+						if(
+							msg[2] == 'amp',
+							{
+								x[msg[1]].setParam('all',\amp,msg[3])
+							}
+						);
+						if(
+							msg[2] == 'pan',
+							{
+								x[msg[1]].setParam('all',\pan,msg[3]);
+							}
+						);
+						if(
+							msg[2] == 'pan_slew',
+							{
+								x[msg[1]].setParam('all',\pan_slew,msg[3]);
+							}
+						);
+						if(
+							msg[2] == 'cutoff',
+							{
+								x[msg[1]].setParam('all',\cutoff,msg[3]);
+							}
+						);
+						if(
+							msg[2] == 'res',
+							{
+								x[msg[1]].setParam('all',\resonance,msg[3]);
+							}
+						);
+						if(
+							msg[2] == 'bus',
+							{
+								if(
+									msg[3] == 1,
+									{
+										x[msg[1]].setParam('all',\bus,~fb.index)
+									}
+								);
+								if(
+									msg[3] == 2,
+									{
+										x[msg[1]].setParam('all',\bus,c)
+									}
+								);
+								if(
+									msg[3] == 3,
+									{
+										x[msg[1]].setParam('all',\bus,b)
+									}
+								)
+							}
+						);
 					},
 					\drum_params
+				);
+				OSCdef(
+					\quit_receiver,
+					{
+						arg msg;
+						msg[1].exit
+					},
+					\quitter
 				);
 				16.do({
 					arg j;
@@ -705,9 +847,10 @@ Task(
 						x[j].setParam((i+1).asSymbol,\bus,b);
 					})
 				});
+				"initializing seamstress".postln;
+				"seamstress desktop/other/seamstress/naherinlied/naherinlied".runInTerminal;
 			}
 		)
 	}
 ).play(AppClock)
 );
-x[48]
