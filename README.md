@@ -1,4 +1,4 @@
-# naherinlied
+# näherinlied
 lied script for seamstress & supercollider
 
 this is the script I usually use for performance – it's very similar to SuperLied but offloads some duties from SuperCollider to Seamstress and has a slightly more fun GUI. Unlike SuperLied, it requires a monome grid. But also unlike SuperLied, you can bring your own midi device to it quite easily, thanks to Seamstress's params paradigm, which, like params on monome norns, makes midi mapping very easy.
