@@ -16,9 +16,10 @@ TriSin {
 
 				SynthDef("TriSin", {
 					arg t_gate = 0,
+					mRatio,
+					cRatio,
 					index,
-					modnum,
-					modeno,
+					iScale,
 					freq,
 					phase,
 					cutoff,
@@ -26,6 +27,12 @@ TriSin {
 					cutoff_env,
 					attack,
 					release,
+					iattack,
+					irelease,
+					cAtk,
+					cRel,
+					ciAtk,
+					ciRel,
 					amp,
 					pan,
 					freq_slew,
@@ -33,35 +40,44 @@ TriSin {
 					pan_slew,
 					bus;
 
+					var car, mod, envelope, iEnv, filter, signal;
 					var slewed_freq = freq.lag3(freq_slew);
-					var modfreq = (modnum/modeno)*slewed_freq;
 
-					var envelope = EnvGen.kr(
-						envelope: Env.new(
-							[0,0,1,0],
-							times: [0.01,attack,release],
-							curve: [0, 4, -4])
+					//amplitude envelope
+					envelope = EnvGen.kr(
+						envelope: Env(
+							[0,1,0],
+							times: [attack,release],
+							curve: [cAtk, cRel])
 						,
 						gate: t_gate
 					);
 
-					var sig = LFTri.ar(
-						slewed_freq + (index*modfreq*SinOsc.ar(modfreq)),
-						phase,
-						amp)*envelope;
+					//index of modulation
+					iEnv = EnvGen.kr(
+						Env(
+							[index, index*iScale, index],
+							times: [iattack, irelease],
+							curve: [ciAtk, ciRel]
+						),
+						gate: t_gate
+					);
 
-					var filter = MoogFF.ar(
-						in: sig,
+					mod = SinOsc.ar(slewed_freq * mRatio, mul:slewed_freq * mRatio * iEnv);
+					car = LFTri.ar(slewed_freq * cRatio + mod) * envelope * amp;
+
+					filter = MoogFF.ar(
+						in: car,
 						freq: Select.kr(cutoff_env > 0, [cutoff, cutoff * envelope]),
 						gain: resonance
 					);
 
-					var signal = Pan2.ar(
-						filter*envelope,
+					signal = Pan2.ar(
+						filter,
 						pan.lag3(pan_slew)
 					);
 
-					Out.ar(bus,signal * amp.lag3(amp_slew));
+					Out.ar(bus,signal);
 				}).add;
 			} //waitForBoot
 		} //StartUp
@@ -78,15 +94,22 @@ TriSin {
 
 		globalParams = Dictionary.newFrom([
 			\freq, 400,
-			\modnum, 1,
-			\modeno, 1,
+			\mRatio, 1,
+			\cRatio, 1,
 			\index, 1,
+			\iScale, 5,
 			\phase, 0,
 			\cutoff, 8000,
 			\cutoff_env, 1,
 			\resonance, 3,
 			\attack, 0,
 			\release, 0.4,
+			\iattack, 0,
+			\irelease, 0.4,
+			\cAtk, 4,
+			\cRel, (-4),
+			\ciAtk, 4,
+			\ciRel, (-4),
 			\amp, 0.5,
 			\pan, 0,
 			\freq_slew, 0,
