@@ -755,10 +755,13 @@ function add_parameters() -- helper function to add all of our parameters
                 params:set("synth_".. i .."_poly",math.random(1,8))
             end
         }
-        buses = {"dry", "reverb", "delay + reverb"}
+        buses = {}
+        for i = 0, 64 do
+            buses[i] = i
+        end
         params:add_option("synth_" .. i .. "_bus_routing", "bus routing", buses, 1)
         params:set_action("synth_" .. i .. "_bus_routing",function(value)
-            osc.send({"localhost","57120"},"/synth_params",{i-1,"bus",value})
+            osc.send({"localhost","57120"},"/synth_params",{i-1,"bus",value-1})
         end
         )
         params:add {
@@ -807,13 +810,13 @@ function add_parameters() -- helper function to add all of our parameters
             }
             params:add_option("sampler_" .. i .. "_bus_routing", "bus routing", buses, 1)
             params:set_action("sampler_" .. i .. "_bus_routing",function(value)
-            osc.send({"localhost","57120"},"/samp_params",{i+14,"bus",value})
+            osc.send({"localhost","57120"},"/samp_params",{i+14,"bus",value-1})
         end
         )
             j = j + 1
         end
     end
-    params:add_group("drums",26)
+    params:add_group("drums",65)
     for i = 1,13 do
         params:add_separator("drum " .. i)
         params:add_control("drum_" .. i .. "_amp","amp",controlspec.AMP)
@@ -822,6 +825,35 @@ function add_parameters() -- helper function to add all of our parameters
         end
         )
         params:set("drum_" .. i .. "_amp",1,1)
+        params:add_control("drum_" .. i .. "_cutoff","filter cutoff",controlspec.FREQ)
+        params:set_action("drum_" .. i .. "_cutoff",function(value)
+            osc.send({"localhost","57120"},"/drum_params",{i+47,"cutoff",value})
+        end
+        )
+        params:set("drum_" .. i .. "_cutoff",15000)
+        params:add {
+            type = "control",
+            id = "drum_"..i.."_res",
+            name = "filter resonance",
+            controlspec = controlspec.new(
+                    0, -- min
+                    3, -- max
+                    "lin", -- warp
+                    0.1, -- step (output will be rounded to a multiple of step)
+                    1, -- default
+                    nil, -- units (an indicator for the unit of measure the data represents)
+                    1 / 127 -- quantum (input quantization value. adjustments are made by this fraction of the range)
+                ),
+                formatter = nil,
+                action = function(value)
+                    osc.send({"localhost","57120"},"/drum_params",{i+47,"res",value})
+                end,
+            }
+        params:add_option("drum_" .. i .. "_bus_routing", "bus routing", buses, 1)
+            params:set_action("drum_" .. i .. "_bus_routing",function(value)
+            osc.send({"localhost","57120"},"/drum_params",{i+47,"bus",value-1})
+        end
+        )
     end
     pan_lfo = {}
     ind_lfo = {}
@@ -927,10 +959,11 @@ function init()
                         if j == 2 then
                             if i == 1 then
                             --if i < 3 then
-                                --clock.sync(math.random(40,120)*0.1)
-                                clock.sync(8)
+                                clock.sync(math.random(40,120)*0.1)
+                                --clock.sync(8)
                             elseif i == 2 then
-                                clock.sync(8)
+                                clock.sync(math.random(40,120)*0.1)
+                                --clock.sync(8)
                             elseif i > 2 and i < 9 then
                                 clock.sync(((S[i][j]()-35)/(S[i][j]()-35))*8)
                             elseif i == 9 then
@@ -954,11 +987,11 @@ function init()
                             clock.sync((S[i][j]()-35)/(S[i][j]()-35)*2)
                         elseif j == 8 then
                             if i == 1 then
-                                clock.sync(1)
+                                clock.sync(4)
                             elseif i == 6 then
                                 clock.sync(16)
                             else
-                                clock.sync(math.random(1,16))
+                                clock.sync(4)
                             end
                         end 
                         if toggled[i][j] then
