@@ -11,6 +11,27 @@ toggled = {} -- table to track the state of the grid keys
 checked_pairs = {} -- Making sure pairs of particles are not checked twice
 particles = {}
 rand_palette = {}
+synthpats = {}
+synthpatsteps = {}
+synthpatvals = {}
+synthpatseq = {}
+synthmult = {}
+synth_rand_min = {}
+synth_rand_max = {}
+sampats = {}
+sampatsteps = {}
+sampatvals = {}
+sampatseq = {}
+sampmult = {}
+samp_rand_min = {}
+samp_rand_max = {}
+drumpats = {}
+drumpatsteps = {}
+drumpatvals = {}
+drumpatseq = {}
+drumult = {}
+drum_rand_min = {}
+drum_rand_max = {}
 mover = 0
 History_Index = 0
 New_Line = false
@@ -324,8 +345,8 @@ function add_parameters() -- helper function to add all of our parameters
                 params:set("synth_".. i .."_poly",math.random(1,8))
                 params:set("synth_".. i .."_bus_routing",math.random(1,#buses))
                 if i < 5 or (i > 8 and i < 13) then
-                    params:set("synth_" .. i .. "_attack",math.random(0,150)*0.1)
-                    params:set("synth_" .. i .. "_release",math.random(0,150)*0.1)
+                    params:set("synth_" .. i .. "_attack",math.random(0,160)*0.1)
+                    params:set("synth_" .. i .. "_release",math.random(0,160)*0.1)
                     params:set("synth_" .. i .. "_carrier_ratio",math.random(1,250)*0.1)
                     params:set("synth_" .. i .. "_modulator_ratio",math.random(1,250)*0.1)
                     params:set("synth_" .. i .. "_index",math.random(-1000,1000)*0.1)
@@ -347,24 +368,25 @@ function add_parameters() -- helper function to add all of our parameters
             id = "synth_" .. i .. "_all_rand",
             name = "        randomize all",
             action = function()
-                params:set("synth_" .. i .. "_amp",math.random(1,10)*0.1)
-                params:set("synth_" .. i .. "_pan",math.random(-10,10)*0.1)
-                params:set("synth_".. i .."_poly",math.random(1,8))
+                params:set("synth_" .. i .. "_amp",0.5)
+                params:set("synth_" .. i .. "_pan",0)
+                params:set("synth_".. i .."_poly",6)
                 params:set("synth_".. i .."_bus_routing",math.random(1,#buses))
                 if i < 5 or (i > 8 and i < 13) then
-                    params:set("synth_" .. i .. "_attack",math.random(0,150)*0.1)
-                    params:set("synth_" .. i .. "_index_attack",math.random(0,150)*0.1)
-                    params:set("synth_" .. i .. "_release",math.random(0,150)*0.1)
-                    params:set("synth_" .. i .. "_index_release",math.random(0,150)*0.1)
+                    params:set("synth_" .. i .. "_attack",math.random(0,160)*0.1)
+                    params:set("synth_" .. i .. "_index_attack",math.random(0,160)*0.1)
+                    params:set("synth_" .. i .. "_release",math.random(0,160)*0.1)
+                    params:set("synth_" .. i .. "_index_release",math.random(0,160)*0.1)
                     params:set("synth_" .. i .. "_carrier_ratio",math.random(1,250)*0.1)
                     params:set("synth_" .. i .. "_modulator_ratio",math.random(1,250)*0.1)
                     params:set("synth_" .. i .. "_index",math.random(-1000,1000)*0.1)
+                    params:set("synth_" .. i .. "_iScale",math.random(-100,100)*0.1)
                     params:set("synth_" .. i .. "_cutoff",math.random(0,20000))
                     params:set("synth_" .. i .. "_res",math.random(0,30)*0.1)
                     params:set("synth_" .. i .. "_freq_slew",math.random(0,100)*0.01)
                     params:set("synth_" .. i .. "_pan_slew",math.random(0,200)*0.1+0.1)
                 else
-                    params:set("synth_".. i .."_index",math.random(0,100)*0.1+0.1)
+                    params:set("synth_".. i .."_index",1)
                 end
             end
         }
@@ -405,7 +427,7 @@ function add_parameters() -- helper function to add all of our parameters
                     15, -- max
                     "lin", -- warp
                     0.1, -- step (output will be rounded to a multiple of step)
-                    14-(i+2), -- default
+                    1, -- default
                     'seconds', -- units (an indicator for the unit of measure the data represents)
                     1 / 127 -- quantum (input quantization value. adjustments are made by this fraction of the range)
                 ),
@@ -431,7 +453,7 @@ function add_parameters() -- helper function to add all of our parameters
                     15, -- max
                     "lin", -- warp
                     0.1, -- step (output will be rounded to a multiple of step)
-                    14-(i+1), -- default
+                    1, -- default
                     'seconds', -- units (an indicator for the unit of measure the data represents)
                     1 / 127 -- quantum (input quantization value. adjustments are made by this fraction of the range)
                 ),
@@ -561,7 +583,7 @@ function add_parameters() -- helper function to add all of our parameters
                     15, -- max
                     "lin", -- warp
                     0.1, -- step (output will be rounded to a multiple of step)
-                    14-(i+2), -- default
+                    1, -- default
                     'seconds', -- units (an indicator for the unit of measure the data represents)
                     1 / 127 -- quantum (input quantization value. adjustments are made by this fraction of the range)
                 ),
@@ -587,7 +609,7 @@ function add_parameters() -- helper function to add all of our parameters
                     15, -- max
                     "lin", -- warp
                     0.1, -- step (output will be rounded to a multiple of step)
-                    14-(i+1), -- default
+                    1, -- default
                     'seconds', -- units (an indicator for the unit of measure the data represents)
                     1 / 127 -- quantum (input quantization value. adjustments are made by this fraction of the range)
                 ),
@@ -901,6 +923,448 @@ function add_parameters() -- helper function to add all of our parameters
         end)
         res_lfo[i+16]:start()
     end
+    params:add_group('pats',997)
+    params:add_separator("synth pats")
+    for i = 1,16 do
+        synthpatvals[i] = {}
+        params:add_option("synth_mode"..i, "synth "..i.." mode", {"lied","pat","rand"},1)
+        params:set_action("synth_mode"..i,function(x)
+        if x == 2 then
+            params:show("synth_step"..i)
+            params:show("synth_mult"..i)
+            params:hide("synth_"..i.."_rand_min")
+            params:hide("synth_"..i.."_rand_max")
+            synthpats[i] = "pat"
+            for j = 1,synthpatsteps[i] do
+                params:show("synth"..i.."step"..j)
+            end
+        elseif x == 1 then
+            params:show("synth_mult"..i)
+            params:hide("synth_step"..i)
+            params:hide("synth_"..i.."_rand_min")
+            params:hide("synth_"..i.."_rand_max")
+            synthpats[i] = "lied"
+            for j = 1,16 do
+                params:hide("synth"..i.."step"..j)
+            end
+        elseif x == 3 then
+            params:show("synth_mult"..i)
+            params:hide("synth_step"..i)
+            params:show("synth_"..i.."_rand_min")
+            params:show("synth_"..i.."_rand_max")
+            synthpats[i] = "rand"
+            for j = 1,16 do
+                params:hide("synth"..i.."step"..j)
+            end
+        end
+        _menu.rebuild_params()
+        end)
+        params:add {
+            type = "control",
+            id = "synth_mult"..i,
+            name = "    mult",
+            controlspec = controlspec.new(
+                    0.25, -- min
+                    16, -- max
+                    "lin", -- warp
+                    0.25, -- step (output will be rounded to a multiple of step)
+                    1, -- default
+                    nil, -- units (an indicator for the unit of measure the data represents)
+                    1/64 -- quantum (input quantization value. adjustments are made by this fraction of the range)
+                ),
+                formatter = nil,
+                action = function(value)
+                    synthmult[i] = value
+                end,
+            }
+        params:add {
+            type = "control",
+            id = "synth_step"..i,
+            name = "    pattern length",
+            controlspec = controlspec.new(
+                    1, -- min
+                    16, -- max
+                    "lin", -- warp
+                    1, -- step (output will be rounded to a multiple of step)
+                    1, -- default
+                    nil, -- units (an indicator for the unit of measure the data represents)
+                    1/16 -- quantum (input quantization value. adjustments are made by this fraction of the range)
+                ),
+                formatter = nil,
+                action = function(value)
+                    synthpatsteps[i] = value
+                    for j = 1,16 do
+                        params:hide("synth"..i.."step"..j)
+                    end
+                    if synthpats[i] == "pat" then
+                        for j = 1,synthpatsteps[i] do
+                            params:show("synth"..i.."step"..j)
+                        end
+                    end
+                    _menu.rebuild_params()
+                end,
+            }
+        params:hide("synth_step"..i)
+        for j = 1,16 do
+            params:add {
+                type = "control",
+                id = "synth"..i.."step"..j,
+                name = "        step "..j,
+                controlspec = controlspec.new(
+                    1/16, -- min
+                    16, -- max
+                    "lin", -- warp
+                    1/16, -- step (output will be rounded to a multiple of step)
+                    1, -- default
+                    nil, -- units (an indicator for the unit of measure the data represents)
+                    1/256 -- quantum (input quantization value. adjustments are made by this fraction of the range)
+                ),
+                    formatter = nil,
+                    action = function(value)
+                        synthpatvals[i][j] = value
+                        synthpatseq[i] = {}
+                        for k = 1,synthpatsteps[i] do
+                            table.insert(synthpatseq[i],synthpatvals[i][k])
+                        end
+                        synthpatseq[i] = Sequins(synthpatseq[i])
+                    end,
+                }
+            params:hide("synth"..i.."step"..j)
+        end
+        params:add {
+            type = "control",
+            id = "synth_"..i.."_rand_min",
+            name = "    rand min",
+            controlspec = controlspec.new(
+                1, -- min
+                160, -- max
+                "lin", -- warp
+                1, -- step (output will be rounded to a multiple of step)
+                1, -- default
+                "tenths", -- units (an indicator for the unit of measure the data represents)
+                1/160 -- quantum (input quantization value. adjustments are made by this fraction of the range)
+            ),
+                formatter = nil,
+                action = function(value)
+                    synth_rand_min[i] = value
+                end,
+            }
+        params:hide("synth_"..i.."_rand_min")
+        params:add {
+            type = "control",
+            id = "synth_"..i.."_rand_max",
+            name = "    rand max",
+            controlspec = controlspec.new(
+                1, -- min
+                160, -- max
+                "lin", -- warp
+                1, -- step (output will be rounded to a multiple of step)
+                1, -- default
+                "tenths", -- units (an indicator for the unit of measure the data represents)
+                1/160 -- quantum (input quantization value. adjustments are made by this fraction of the range)
+            ),
+                formatter = nil,
+                action = function(value)
+                    synth_rand_max[i] = value
+                end,
+            }
+        params:hide("synth_"..i.."_rand_max")
+    end
+    params:add_separator("sampler pats")
+    for i = 1,16 do
+        sampatvals[i] = {}
+        params:add_option("samp_mode"..i, "sampler "..i.." mode", {"lied","pat","rand"},1)
+        params:set_action("samp_mode"..i,function(x)
+        if x == 2 then
+            params:show("sampler_step"..i)
+            params:show("sampler_mult"..i)
+            params:hide("samp_"..i.."_rand_min")
+            params:hide("samp_"..i.."_rand_max")
+            sampats[i] = "pat"
+            for j = 1,sampatsteps[i] do
+                params:show("sampler"..i.."step"..j)
+            end
+        elseif x == 1 then
+            params:hide("sampler_step"..i)
+            params:show("sampler_mult"..i)
+            params:hide("samp_"..i.."_rand_min")
+            params:hide("samp_"..i.."_rand_max")
+            sampats[i] = "lied"
+            for j = 1,16 do
+                params:hide("sampler"..i.."step"..j)
+            end
+        elseif x == 3 then
+            params:hide("sampler_step"..i)
+            params:show("sampler_mult"..i)
+            params:show("samp_"..i.."_rand_min")
+            params:show("samp_"..i.."_rand_max")
+            sampats[i] = "rand"
+            for j = 1,16 do
+                params:hide("sampler"..i.."step"..j)
+            end
+        end
+        _menu.rebuild_params()
+        end)
+        params:add {
+            type = "control",
+            id = "sampler_mult"..i,
+            name = "    mult",
+            controlspec = controlspec.new(
+                    0.25, -- min
+                    16, -- max
+                    "lin", -- warp
+                    0.25, -- step (output will be rounded to a multiple of step)
+                    1, -- default
+                    nil, -- units (an indicator for the unit of measure the data represents)
+                    1/64 -- quantum (input quantization value. adjustments are made by this fraction of the range)
+                ),
+                formatter = nil,
+                action = function(value)
+                    sampmult[i] = value
+                end,
+            }
+        params:add {
+            type = "control",
+            id = "sampler_step"..i,
+            name = "    pattern length",
+            controlspec = controlspec.new(
+                    1, -- min
+                    16, -- max
+                    "lin", -- warp
+                    1, -- step (output will be rounded to a multiple of step)
+                    1, -- default
+                    nil, -- units (an indicator for the unit of measure the data represents)
+                    1/16 -- quantum (input quantization value. adjustments are made by this fraction of the range)
+                ),
+                formatter = nil,
+                action = function(value)
+                    sampatsteps[i] = value
+                    for j = 1,16 do
+                        params:hide("sampler"..i.."step"..j)
+                    end
+                    if sampats[i] == "pat" then
+                        for j = 1,sampatsteps[i] do
+                            params:show("sampler"..i.."step"..j)
+                        end
+                    end
+                    _menu.rebuild_params()
+                end,
+            }
+        params:hide("sampler_step"..i)
+        for j = 1,16 do
+            params:add {
+                type = "control",
+                id = "sampler"..i.."step"..j,
+                name = "        step "..j,
+                controlspec = controlspec.new(
+                    1/16, -- min
+                    16, -- max
+                    "lin", -- warp
+                    1/16, -- step (output will be rounded to a multiple of step)
+                    1, -- default
+                    nil, -- units (an indicator for the unit of measure the data represents)
+                    1/256 -- quantum (input quantization value. adjustments are made by this fraction of the range)
+                ),
+                    formatter = nil,
+                    action = function(value)
+                        sampatvals[i][j] = value
+                        sampatseq[i] = {}
+                        for k = 1,sampatsteps[i] do
+                            table.insert(sampatseq[i],sampatvals[i][k])
+                        end
+                        sampatseq[i] = Sequins(sampatseq[i])
+                    end,
+                }
+            params:hide("sampler"..i.."step"..j)
+        end
+        params:add {
+            type = "control",
+            id = "samp_"..i.."_rand_min",
+            name = "    rand min",
+            controlspec = controlspec.new(
+                1, -- min
+                160, -- max
+                "lin", -- warp
+                1, -- step (output will be rounded to a multiple of step)
+                1, -- default
+                "tenths", -- units (an indicator for the unit of measure the data represents)
+                1/160 -- quantum (input quantization value. adjustments are made by this fraction of the range)
+            ),
+                formatter = nil,
+                action = function(value)
+                    samp_rand_min[i] = value
+                end,
+            }
+        params:hide("samp_"..i.."_rand_min")
+        params:add {
+            type = "control",
+            id = "samp_"..i.."_rand_max",
+            name = "    rand max",
+            controlspec = controlspec.new(
+                1, -- min
+                160, -- max
+                "lin", -- warp
+                1, -- step (output will be rounded to a multiple of step)
+                1, -- default
+                "tenths", -- units (an indicator for the unit of measure the data represents)
+                1/160 -- quantum (input quantization value. adjustments are made by this fraction of the range)
+            ),
+                formatter = nil,
+                action = function(value)
+                    samp_rand_max[i] = value
+                end,
+            }
+        params:hide("samp_"..i.."_rand_max")
+    end
+    params:add_separator("drum pats")
+    for i = 1,16 do
+        drumpatvals[i] = {}
+        drumpatsteps[i] = 1
+        params:add_option("drum_mode"..i, "drum "..i.." mode", {"pat","rand"},1)
+        params:set_action("drum_mode"..i,function(x)
+        if x == 1 then
+            if i < 14 then
+                params:show("drum_step"..i)
+                params:show("drum_mult"..i)
+                params:hide("drum_"..i.."_rand_min")
+                params:hide("drum_"..i.."_rand_max")
+                drumpats[i] = "pat"
+                for j = 1,drumpatsteps[i] do
+                    params:show("drum"..i.."step"..j)
+                end
+            end
+        elseif x == 2 then
+            if i < 14 then
+                params:hide("drum_step"..i)
+                params:show("drum_"..i.."_rand_min")
+                params:show("drum_"..i.."_rand_max")
+                drumpats[i] = "rand"
+                for j = 1,16 do
+                    params:hide("drum"..i.."step"..j)
+                end
+            end
+        end
+        _menu.rebuild_params()
+        end)
+        params:add {
+            type = "control",
+            id = "drum_mult"..i,
+            name = "    mult",
+            controlspec = controlspec.new(
+                    0.25, -- min
+                    16, -- max
+                    "lin", -- warp
+                    0.25, -- step (output will be rounded to a multiple of step)
+                    1, -- default
+                    nil, -- units (an indicator for the unit of measure the data represents)
+                    1/64 -- quantum (input quantization value. adjustments are made by this fraction of the range)
+                ),
+                formatter = nil,
+                action = function(value)
+                    drumult[i] = value
+                end,
+            }
+        params:add {
+            type = "control",
+            id = "drum_step"..i,
+            name = "    pattern length",
+            controlspec = controlspec.new(
+                    1, -- min
+                    16, -- max
+                    "lin", -- warp
+                    1, -- step (output will be rounded to a multiple of step)
+                    1, -- default
+                    nil, -- units (an indicator for the unit of measure the data represents)
+                    1/16 -- quantum (input quantization value. adjustments are made by this fraction of the range)
+                ),
+                formatter = nil,
+                action = function(value)
+                    drumpatsteps[i] = value
+                    drumpatseq[i] = {}
+                    for j = 1,16 do
+                        params:hide("drum"..i.."step"..j)
+                    end
+                    for j = 1,drumpatsteps[i] do
+                        if i < 14 then
+                            params:show("drum"..i.."step"..j)
+                        end
+                        table.insert(drumpatseq[i],drumpatvals[i][j])
+                    end
+                    drumpatseq[i] = Sequins(drumpatseq[i])
+                    _menu.rebuild_params()
+                end,
+            }
+        params:hide("drum_step"..i)
+        if i > 13 then
+            params:hide("drum_mode"..i)
+            params:hide("drum_mult"..i)
+            params:hide("drum_step"..i)
+        end
+        for j = 1,16 do
+            params:add {
+                type = "control",
+                id = "drum"..i.."step"..j,
+                name = "        step "..j,
+                controlspec = controlspec.new(
+                    1/16, -- min
+                    16, -- max
+                    "lin", -- warp
+                    1/16, -- step (output will be rounded to a multiple of step)
+                    1, -- default
+                    nil, -- units (an indicator for the unit of measure the data represents)
+                    1/256 -- quantum (input quantization value. adjustments are made by this fraction of the range)
+                ),
+                    formatter = nil,
+                    action = function(value)
+                        drumpatvals[i][j] = value
+                        drumpatseq[i] = {}
+                        for k = 1,drumpatsteps[i] do
+                            table.insert(drumpatseq[i],drumpatvals[i][k])
+                        end
+                        drumpatseq[i] = Sequins(drumpatseq[i])
+                    end,
+                }
+            params:hide("drum"..i.."step"..j)
+        end
+        params:add {
+            type = "control",
+            id = "drum_"..i.."_rand_min",
+            name = "    rand min",
+            controlspec = controlspec.new(
+                1, -- min
+                160, -- max
+                "lin", -- warp
+                1, -- step (output will be rounded to a multiple of step)
+                1, -- default
+                "tenths", -- units (an indicator for the unit of measure the data represents)
+                1/160 -- quantum (input quantization value. adjustments are made by this fraction of the range)
+            ),
+                formatter = nil,
+                action = function(value)
+                    drum_rand_min[i] = value
+                end,
+            }
+        params:hide("drum_"..i.."_rand_min")
+        params:add {
+            type = "control",
+            id = "drum_"..i.."_rand_max",
+            name = "    rand max",
+            controlspec = controlspec.new(
+                1, -- min
+                160, -- max
+                "lin", -- warp
+                1, -- step (output will be rounded to a multiple of step)
+                1, -- default
+                "tenths", -- units (an indicator for the unit of measure the data represents)
+                1/160 -- quantum (input quantization value. adjustments are made by this fraction of the range)
+            ),
+                formatter = nil,
+                action = function(value)
+                    drum_rand_max[i] = value
+                end,
+            }
+        params:hide("drum_"..i.."_rand_max")
+    end
     params:bang()
 end
 
@@ -910,7 +1374,7 @@ function init()
     -- print('supercollider initialized')
     refresh_metro = metro.init(
     redraw, -- function to execute
-    1/60, -- how often (here, 60 fps)
+    1/15, -- how often (here, 15 fps)
     -1 -- how many times (here, forever)
     )
     refresh_metro:start() -- start the timer
@@ -944,12 +1408,6 @@ function init()
     screen.set_size(width,height,zoom)
     clock.run(grid_redraw_clock)
     add_parameters()
-    --some sequences
-    seqs = {}
-    seqs[1] = Sequins({0.25,0.25,15.5})
-    seqs[2] = Sequins({0.5,15,0.5})
-    seqs[3] = Sequins({0.25,15.25,0.25,0.25})
-    seqs[4] = Sequins({0.5,0.5,14.5,0.5})
     for i = 1, 16 do
         Step[i] = {}
         for j = 2, 8 do
@@ -957,41 +1415,34 @@ function init()
                 Step[i][j] = function()
                     while true do
                         if j == 2 then
-                            if i == 1 then
-                            --if i < 3 then
-                                clock.sync(math.random(40,120)*0.1)
-                                --clock.sync(8)
-                            elseif i == 2 then
-                                clock.sync(math.random(40,120)*0.1)
-                                --clock.sync(8)
-                            elseif i > 2 and i < 9 then
-                                clock.sync(((S[i][j]()-35)/(S[i][j]()-35))*8)
-                            elseif i == 9 then
-                                clock.sync(seqs[1]())
-                            elseif i == 10 then
-                                clock.sync(seqs[2]())
-                            elseif i == 11 then
-                                clock.sync(seqs[3]())
-                            elseif i == 12 then
-                                clock.sync(seqs[4]())
-                            elseif i == 13 then
-                                clock.sync(3)
-                            elseif i == 14 then
-                                clock.sync(3/2)
-                            elseif i == 15 then
-                                clock.sync(1)
-                            elseif i == 16 then
-                                clock.sync(1/2)
-                            end
-                        elseif j == 4 or j == 6 then
-                            clock.sync((S[i][j]()-35)/(S[i][j]()-35)*2)
-                        elseif j == 8 then
-                            if i == 1 then
-                                clock.sync(4)
-                            elseif i == 6 then
-                                clock.sync(16)
+                            if synthpats[i] == "pat" then
+                                clock.sync(synthpatseq[i]()*synthmult[i])
+                            elseif synthpats[i] == "lied" then
+                                clock.sync(((S[i][j]()-35)/(S[i][j]()-35))*synthmult[i])
                             else
-                                clock.sync(4)
+                                clock.sync((math.random(synth_rand_min[i],synth_rand_max[i])*0.1)*synthmult[i])
+                            end
+                        elseif j == 4 then
+                            if sampats[i] == "pat" then
+                                clock.sync(sampatseq[i]()*sampmult[i])
+                            elseif sampats[i] == "lied" then
+                                clock.sync(((S[i][j]()-35)/(S[i][j]()-35))*sampmult[i])
+                            else
+                                clock.sync((math.random(samp_rand_min[i],samp_rand_max[i])*0.1)*sampmult[i])
+                            end
+                        elseif j == 6 then
+                            if sampats[i+8] == "pat" then
+                                clock.sync(sampatseq[i+8]()*sampmult[i])
+                            elseif sampats[i+8] == "lied" then
+                                clock.sync(((S[i][j]()-35)/(S[i][j]()-35))*sampmult[i])
+                            else
+                                clock.sync((math.random(samp_rand_min[i],samp_rand_max[i])*0.1)*sampmult[i])
+                            end
+                        elseif j == 8 then
+                            if drumpats[i] == "pat" then
+                                clock.sync(drumpatseq[i]()*drumult[i])
+                            else
+                                clock.sync((math.random(drum_rand_min[i],drum_rand_max[i])*0.1)*drumult[i])
                             end
                         end 
                         if toggled[i][j] then
@@ -1031,7 +1482,7 @@ function init()
                                 end
                             elseif j == 8 then
                                 if i < 14 then
-                                    if i > 5 then
+                                    if i == 6 then
                                         osc.send({"localhost","57120"},"/drum_osc",{i+47,math.random(1,8),1})
                                     else
                                         osc.send({"localhost","57120"},"/drum_osc",{i+47,i,1})
